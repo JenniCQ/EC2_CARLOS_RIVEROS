@@ -1,0 +1,425 @@
+{
+  "Uuid": "2b7c4223-fc76-448c-b975-7a37768105af",
+  "IsCustomNode": false,
+  "Description": "",
+  "Name": "ID_PROYECTO",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "DSRevitNodesUI.ElementsInView, DSRevitNodesUI",
+      "Id": "11aff0638dae40bfaf15cc8922871ab8",
+      "NodeType": "ExtensionNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "dd93a6d9db97421a9c723d629bcb84bd",
+          "Name": "elements",
+          "Description": "All visible elements in the active view.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Get all the elements which are visible in the active view."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "WatchWidth": 200.0,
+      "WatchHeight": 200.0,
+      "Id": "47090652502a4c5eb4b667e2345dcd14",
+      "NodeType": "ExtensionNode",
+      "Inputs": [
+        {
+          "Id": "cd67fd4f3dc242288ae369f4ebb505ce",
+          "Name": "",
+          "Description": "Node to show output from",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "08bc07cf3607451d9f196464a0fe468c",
+          "Name": "",
+          "Description": "Node output",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Visualizes a node's output"
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "Code": "import clr\r\n\r\n# =========================================================\r\n# REVIT API\r\n# =========================================================\r\nclr.AddReference(\"RevitAPI\")\r\nfrom Autodesk.Revit.DB import *\r\n\r\n# =========================================================\r\n# REVIT SERVICES\r\n# =========================================================\r\nclr.AddReference(\"RevitServices\")\r\nfrom RevitServices.Persistence import DocumentManager\r\n\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\n\r\n# =========================================================\r\n# ENTRADA\r\n# IN[0] = elementos de Revit\r\n# =========================================================\r\nelementos = IN[0]\r\n\r\nif not isinstance(elementos, list):\r\n    elementos = [elementos]\r\n\r\n# =========================================================\r\n# TABLA\r\n# =========================================================\r\ntabla = [\r\n    [\"Categoria\", \"Familia\", \"Tipo\", \"ID\"]\r\n]\r\n\r\n# =========================================================\r\n# RECORRER ELEMENTOS\r\n# =========================================================\r\nfor elemento in elementos:\r\n\r\n    try:\r\n        el = UnwrapElement(elemento)\r\n\r\n        if el is None:\r\n            continue\r\n\r\n        # -------------------------------------------------\r\n        # CATEGORIA\r\n        # -------------------------------------------------\r\n        categoria = \"Sin categoria\"\r\n\r\n        try:\r\n            if el.Category is not None:\r\n                categoria = el.Category.Name\r\n        except:\r\n            pass\r\n\r\n        # -------------------------------------------------\r\n        # ID\r\n        # -------------------------------------------------\r\n        elemento_id = \"\"\r\n\r\n        try:\r\n            elemento_id = el.Id.Value\r\n        except:\r\n            try:\r\n                elemento_id = el.Id.IntegerValue\r\n            except:\r\n                pass\r\n\r\n        # -------------------------------------------------\r\n        # VALORES INICIALES\r\n        # -------------------------------------------------\r\n        familia = \"Sin familia\"\r\n        tipo = \"Sin tipo\"\r\n\r\n        # -------------------------------------------------\r\n        # OBTENER TIPO DEL ELEMENTO\r\n        # -------------------------------------------------\r\n        try:\r\n            type_id = el.GetTypeId()\r\n\r\n            if type_id != ElementId.InvalidElementId:\r\n\r\n                element_type = doc.GetElement(type_id)\r\n\r\n                if element_type is not None:\r\n\r\n                    # =====================================\r\n                    # FAMILIA\r\n                    # =====================================\r\n                    try:\r\n                        p_familia = element_type.get_Parameter(\r\n                            BuiltInParameter.ALL_MODEL_FAMILY_NAME\r\n                        )\r\n\r\n                        if p_familia is not None:\r\n                            valor = p_familia.AsString()\r\n\r\n                            if valor:\r\n                                familia = valor\r\n                    except:\r\n                        pass\r\n\r\n                    # Si no encontró familia\r\n                    if familia == \"Sin familia\":\r\n                        try:\r\n                            familia = element_type.FamilyName\r\n                        except:\r\n                            try:\r\n                                familia = element_type.Family.Name\r\n                            except:\r\n                                pass\r\n\r\n                    # =====================================\r\n                    # TIPO\r\n                    # =====================================\r\n                    try:\r\n                        p_tipo = element_type.get_Parameter(\r\n                            BuiltInParameter.ALL_MODEL_TYPE_NAME\r\n                        )\r\n\r\n                        if p_tipo is not None:\r\n                            valor_tipo = p_tipo.AsString()\r\n\r\n                            if valor_tipo:\r\n                                tipo = valor_tipo\r\n                    except:\r\n                        pass\r\n\r\n                    # -------------------------------------\r\n                    # MÉTODO ALTERNATIVO\r\n                    # -------------------------------------\r\n                    if tipo == \"Sin tipo\":\r\n                        try:\r\n                            p_tipo = element_type.get_Parameter(\r\n                                BuiltInParameter.SYMBOL_NAME_PARAM\r\n                            )\r\n\r\n                            if p_tipo is not None:\r\n                                valor_tipo = p_tipo.AsString()\r\n\r\n                                if valor_tipo:\r\n                                    tipo = valor_tipo\r\n                        except:\r\n                            pass\r\n\r\n                    # -------------------------------------\r\n                    # ÚLTIMO MÉTODO\r\n                    # -------------------------------------\r\n                    if tipo == \"Sin tipo\":\r\n                        try:\r\n                            tipo = Element.Name.GetValue(element_type)\r\n                        except:\r\n                            pass\r\n\r\n        except:\r\n            pass\r\n\r\n        # -------------------------------------------------\r\n        # AGREGAR FILA\r\n        # -------------------------------------------------\r\n        tabla.append([\r\n            categoria,\r\n            familia,\r\n            tipo,\r\n            elemento_id\r\n        ])\r\n\r\n    except:\r\n        pass\r\n\r\n# =========================================================\r\n# SALIDA\r\n# =========================================================\r\nOUT = tabla",
+      "Engine": "CPython3",
+      "VariableInputPorts": true,
+      "Id": "85acf6b28d244814986ec6f5fa51db5b",
+      "NodeType": "PythonScriptNode",
+      "Inputs": [
+        {
+          "Id": "8f5bd7999c4a4d039505072667323c9d",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "342920e010984064886590b788705403",
+          "Name": "OUT",
+          "Description": "Result of the python script",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Runs an embedded Python script."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "WatchWidth": 200.0,
+      "WatchHeight": 200.0,
+      "Id": "9703c911d1894f31a9bda132a2c4f7f9",
+      "NodeType": "ExtensionNode",
+      "Inputs": [
+        {
+          "Id": "fbb751b325194e57b033d6d2c4a47d9c",
+          "Name": "",
+          "Description": "Node to show output from",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "52683717fab24609a00a98cc7a606fd3",
+          "Name": "",
+          "Description": "Node output",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Visualizes a node's output"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.ZeroTouch.DSFunction, DynamoCore",
+      "Id": "6444e7ec06e947babcbf9decbd7da59f",
+      "NodeType": "FunctionNode",
+      "Inputs": [
+        {
+          "Id": "0b7e9a715f21456287de3aa8014b69d1",
+          "Name": "filePath",
+          "Description": "string",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "78b148fa9c1c48f59e62dcc19c3b6f70",
+          "Name": "sheetName",
+          "Description": "string",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "ef53d74c88d3405688bb2921761811f7",
+          "Name": "data",
+          "Description": "var[][]",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "3f3ee025ab78492f9d9b7b15aed89271",
+          "Name": "startRow",
+          "Description": "int\nDefault value : 0",
+          "UsingDefaultValue": true,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "e2be904f43c54e41b7fbc744df25a938",
+          "Name": "startColumn",
+          "Description": "int\nDefault value : 0",
+          "UsingDefaultValue": true,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "b2c5742a7d3848e6acc516eb35dd695b",
+          "Name": "overWrite",
+          "Description": "bool\nDefault value : false",
+          "UsingDefaultValue": true,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "4883875ed53c49bb94ff4b699a8367db",
+          "Name": "writeAsString",
+          "Description": "bool\nDefault value : false",
+          "UsingDefaultValue": true,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "b5e64464fb1a403492b3231fc6553b84",
+          "Name": "bool",
+          "Description": "bool",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "FunctionSignature": "DSOffice.Data.OpenXMLExportExcel@string,string,var[][],int,int,bool,bool",
+      "Replication": "Auto",
+      "Description": "Data.OpenXMLExportExcel (filePath: string, sheetName: string, data: var[][], startRow: int = 0, startColumn: int = 0, overWrite: bool = false, writeAsString: bool = false): bool"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
+      "SerializedWidth": 0.0,
+      "SerializedHeight": 0.0,
+      "Id": "f685fbfbc0e44c338f7f5539cea19604",
+      "NodeType": "StringInputNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "52570426e0594a898eb0e520a11990b4",
+          "Name": "",
+          "Description": "String",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Creates a string.",
+      "InputValue": "ID_PROYECTO"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.Filename, CoreNodeModels",
+      "Id": "91a8e66e6cd04dc5b73193ef6dec3d76",
+      "NodeType": "ExtensionNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "72a47d81dab54d2eb4f7d560cd1bca2b",
+          "Name": "",
+          "Description": "File Path",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Allows you to select a file on the system and returns its file path",
+      "HintPath": "C:\\Users\\MARCO\\Desktop\\UCSUR\\Nueva carpeta\\ecd 02\\ID.xlsx",
+      "InputValue": ".\\ID.xlsx"
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "dd93a6d9db97421a9c723d629bcb84bd",
+      "End": "cd67fd4f3dc242288ae369f4ebb505ce",
+      "Id": "74e2e8ad92fe459897e4b41e0d4ad718",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "08bc07cf3607451d9f196464a0fe468c",
+      "End": "8f5bd7999c4a4d039505072667323c9d",
+      "Id": "e7395b3bc1e849fa8b36abd0ff6e0712",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "342920e010984064886590b788705403",
+      "End": "fbb751b325194e57b033d6d2c4a47d9c",
+      "Id": "a979a5f3078d4ab9bf686ea18c689e15",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "52683717fab24609a00a98cc7a606fd3",
+      "End": "ef53d74c88d3405688bb2921761811f7",
+      "Id": "243d0fd6f90f4c388d646b2a4cfc1530",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "52570426e0594a898eb0e520a11990b4",
+      "End": "78b148fa9c1c48f59e62dcc19c3b6f70",
+      "Id": "96da75ed86a84dbc93efc4bd71b28172",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "72a47d81dab54d2eb4f7d560cd1bca2b",
+      "End": "0b7e9a715f21456287de3aa8014b69d1",
+      "Id": "a5f8ef17bacd4cd58c9281ab6112ed09",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [
+    {
+      "Name": "ID.xlsx",
+      "ReferenceType": "External",
+      "Nodes": [
+        "91a8e66e6cd04dc5b73193ef6dec3d76"
+      ]
+    }
+  ],
+  "EnableLegacyPolyCurveBehavior": true,
+  "Thumbnail": "",
+  "GraphDocumentationURL": null,
+  "ExtensionWorkspaceData": [
+    {
+      "ExtensionGuid": "28992e1d-abb9-417f-8b1b-05e053bee670",
+      "Name": "Properties",
+      "Version": "3.6",
+      "Data": {}
+    },
+    {
+      "ExtensionGuid": "DFBD9CC0-DB40-457A-939E-8C8555555A9D",
+      "Name": "Generative Design",
+      "Version": "9.1",
+      "Data": {}
+    }
+  ],
+  "Author": "",
+  "Linting": {
+    "activeLinter": "None",
+    "activeLinterId": "7b75fb44-43fd-4631-a878-29f4d5d8399a",
+    "warningCount": 0,
+    "errorCount": 0
+  },
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "3.6.2.11575",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "_Background Preview",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Id": "11aff0638dae40bfaf15cc8922871ab8",
+        "Name": "All Elements In Active View",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 264.8,
+        "Y": 273.60000000000014
+      },
+      {
+        "Id": "47090652502a4c5eb4b667e2345dcd14",
+        "Name": "Watch",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 592.0,
+        "Y": 254.39999999999998
+      },
+      {
+        "Id": "85acf6b28d244814986ec6f5fa51db5b",
+        "Name": "Python Script",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 946.3999999999999,
+        "Y": 221.60000000000002
+      },
+      {
+        "Id": "9703c911d1894f31a9bda132a2c4f7f9",
+        "Name": "Watch",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 1160.641881510848,
+        "Y": 295.0362727672705
+      },
+      {
+        "Id": "6444e7ec06e947babcbf9decbd7da59f",
+        "Name": "Data.OpenXMLExportExcel",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 1724.8000000000004,
+        "Y": 67.19999999999993
+      },
+      {
+        "Id": "f685fbfbc0e44c338f7f5539cea19604",
+        "Name": "String",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 1241.6000000000001,
+        "Y": 98.39999999999986
+      },
+      {
+        "Id": "91a8e66e6cd04dc5b73193ef6dec3d76",
+        "Name": "File Path",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 1148.8000000000002,
+        "Y": -38.40000000000009
+      }
+    ],
+    "Annotations": [],
+    "X": -341.74565501193297,
+    "Y": 184.57987752272794,
+    "Zoom": 0.9100638039314392
+  }
+}
